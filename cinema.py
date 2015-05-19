@@ -89,7 +89,7 @@ def serve(movies_dir):
         play(path.join(movies_dir, movie))
         return redirect('/')
 
-    app.run(debug=True)
+    app.run(port=80, host='0.0.0.0', debug=True)
 
 serve(r"/media/hd250/movies")
 #play(r"F:\movies\Epic (2013) [1080p]")
