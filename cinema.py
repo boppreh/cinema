@@ -54,6 +54,7 @@ def play(target):
     if platform.system() == 'Windows':
         system([r'C:\Program Files (x86)\VideoLAN\VLC\vlc.exe', movie, '--sub-file', subtitles])
     else:
+        os.system("echo 'on 0' | cec-client -s")
         system([r'omxplayer', movie, '--subtitles', subtitles])
 
 min_movie_size = 5000000
