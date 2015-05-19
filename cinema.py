@@ -7,6 +7,7 @@ from io import BytesIO
 from os import path
 import platform
 from subprocess import call as system
+from subprocess import Popen as system_child
 
 log = print
 
@@ -55,7 +56,7 @@ def play(target):
         system([r'C:\Program Files (x86)\VideoLAN\VLC\vlc.exe', movie, '--sub-file', subtitles])
     else:
         os.system("echo 'on 0' | cec-client -s")
-        system([r'omxplayer', movie, '--subtitles', subtitles])
+        system_child([r'omxplayer', movie, '--subtitles', subtitles, '-b'])
 
 min_movie_size = 5000000
 def list_movies(movies_dir):
@@ -88,6 +89,33 @@ def serve(movies_dir):
     @app.route("/play/<movie>")
     def serve_play(movie):
         play(path.join(movies_dir, movie))
+        return redirect('/control')
+
+    def run_control(name):
+        system(['./dbuscontrol.sh', name])
+
+    @app.route("/control")
+    def serve_control():
+        template = """<html><body>
+<a href="/control/playpause">Play/Pause</a><br>
+<a href="/control/subtitles">Toggle Subtitles</a><br>
+<a href="/control/stop">Stop</a><br>
+</body></html>"""
+        return template
+
+    @app.route("/control/playpause")
+    def serve_control_playpause():
+        run_control('pause')
+        return redirect('/control')
+
+    @app.route("/control/subtitles")
+    def serve_control_subtitles():
+        run_control('togglesubtitles')
+        return redirect('/control')
+
+    @app.route("/control/stop")
+    def serve_control_stop():
+        run_control('stop')
         return redirect('/')
 
     app.run(port=80, host='0.0.0.0', debug=True)
