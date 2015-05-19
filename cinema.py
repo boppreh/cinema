@@ -91,5 +91,5 @@ def serve(movies_dir):
 
     app.run(debug=True)
 
-serve(r"F:\movies")
+serve(r"/media/hd250/movies")
 #play(r"F:\movies\Epic (2013) [1080p]")
