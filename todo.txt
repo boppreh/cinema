@@ -1,3 +1,2 @@
 - convert subtitles to UTF-8
 - prefer subtitles that match the file name instead of just most popular one
-- player controls
