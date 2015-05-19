@@ -72,9 +72,11 @@ def serve(movies_dir):
     from urllib.parse import unquote as urldecode
     app = Flask(__name__)
 
+    HEAD = """<head><link rel="stylesheet" type="text/css" href="style.css"></link><meta http-equiv="content-type" content="text/html; charset=UTF-8"></head>"""
+
     @app.route("/")
     def serve_root():
-        page = ['<html><body><ul>']
+        page = ['<html>', HEAD, '<body><ul>']
         for movie_path in list_movies(movies_dir):
             movie = path.basename(movie_path)
             page.append('<li><a href="view/{}">{}</a></li>'.format(urlencode(movie), movie))
@@ -83,7 +85,7 @@ def serve(movies_dir):
 
     @app.route("/view/<movie>")
     def serve_view(movie):
-        template = '<html><body><h1>{}</h1><br><a href="/play/{}">Play</a></body></html>'
+        template = '<html>' + HEAD + '<body><h1>{}</h1><br><a href="/play/{}">Play</a></body></html>'
         return template.format(movie, urlencode(movie))
 
     @app.route("/play/<movie>")
@@ -96,7 +98,7 @@ def serve(movies_dir):
 
     @app.route("/control")
     def serve_control():
-        template = """<html><body>
+        template = '<html>' + HEAD + """<body>
 <a href="/control/playpause">Play/Pause</a><br>
 <a href="/control/subtitles">Toggle Subtitles</a><br>
 <a href="/control/stop">Stop</a><br>

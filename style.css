@@ -1,0 +1,75 @@
+/* 
+    *   Created on : 19/05/2015, 17:30:16 GMT -3
+    *   Author     : Bruno Honnef
+    *   WebSite    : http://ehonnef.com
+    *   E-mail     : bruno@ehonnef.com
+*/
+
+/**************************************************************
+**GLOBAIS
+**************************************************************/
+
+* {
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+
+body {
+    background: #272822;
+}
+
+ul {
+    padding-left: 20px;
+}
+
+ul li {
+    margin-top: 5px;
+    list-style: none;
+}
+
+ul li a {
+    color: #f8f8f2;
+    font-family: arial;
+    font-variant: small-caps;
+    font-size: 21px;
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0;
+}
+
+ul li a:visited {
+    color: #BB264E;
+}
+
+ul li a:hover {
+    color: #937ed9;
+}
+
+h1 {
+    color: #BB264E;
+    font-family: arial;
+    font-variant: small-caps;
+    font-size: 30px;
+    text-decoration: none;
+    border-bottom: 3px solid #454640;
+    padding-left: 10px;
+}
+
+p {
+    
+}
+
+a {
+    color: #f8f8f2;
+    font-family: arial;
+    font-variant: small-caps;
+    font-size: 21px;
+    text-decoration: none;
+    font-weight: bold;
+    padding-left: 25px;
+}
+
+a:hover {
+    color: #937ed9;
+}
