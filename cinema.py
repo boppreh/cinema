@@ -72,7 +72,7 @@ def serve(movies_dir):
     from urllib.parse import unquote as urldecode
     app = Flask(__name__)
 
-    HEAD = """<head><link rel="stylesheet" type="text/css" href="style.css"></link><meta http-equiv="content-type" content="text/html; charset=UTF-8"></head>"""
+    HEAD = """<head><link rel="stylesheet" type="text/css" href="/style.css"></link><meta http-equiv="content-type" content="text/html; charset=UTF-8"></head>"""
 
     @app.route("/")
     def serve_root():
@@ -82,6 +82,11 @@ def serve(movies_dir):
             page.append('<li><a href="view/{}">{}</a></li>'.format(urlencode(movie), movie))
         page.append('<ul></body></html>')
         return ''.join(page)
+
+    @app.route("/style.css")
+    def serve_style():
+        print("serving css")
+        return app.send_static_file('style.css')
 
     @app.route("/view/<movie>")
     def serve_view(movie):
@@ -120,7 +125,7 @@ def serve(movies_dir):
         run_control('stop')
         return redirect('/')
 
-    app.run(port=80, host='0.0.0.0', debug=True)
+    app.run(port=8080, host='0.0.0.0', debug=True)
 
 serve(r"/media/hd250/movies")
 #play(r"F:\movies\Epic (2013) [1080p]")
