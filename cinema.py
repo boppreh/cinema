@@ -85,7 +85,6 @@ def serve(movies_dir):
 
     @app.route("/style.css")
     def serve_style():
-        print("serving css")
         return app.send_static_file('style.css')
 
     @app.route("/view/<movie>")
