@@ -14,7 +14,7 @@ def get_movie(target):
 def play(target):
     movie = get_movie(target)
     log('Using movie at {}'.format(movie))
-    subtitles = get_subtitles(target)
+    subtitles = get_subtitles(movie)
     log('Using subtitles at {}'.format(subtitles))
 
     if platform.system() == 'Windows':

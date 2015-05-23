@@ -59,14 +59,15 @@ def find_existing(target):
         if f.endswith('.srt'):
             return path.join(target, f)
 
-def get_subtitles(target):
-    subs = find_existing(target) or download_subtitles(path.basename(target), target)
+def get_subtitles(movie_file):
+    target = path.dirname(movie_file)
+    subs = find_existing(target) or download_subtitles(path.basename(movie_file), target)
     convert_to_utf8(subs)
     return subs
 
 if __name__ == '__main__':
     from sys import argv
     if len(argv) == 2:
-        get_subtitles(argv[1])
+        print(get_subtitles(argv[1]))
     else:
         print("Usage: subtitles.py movie_path")
