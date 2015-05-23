@@ -11,6 +11,9 @@ from subprocess import Popen as system_child
 
 log = print
 
+def convert_to_utf8(file_path):
+    os.system('vim +"set bomb | set fileencoding=utf-8 | wq" "{}"'.format(file_path))
+
 def download_subtitles(title='Forrest Gump', target='.'):
     page = requests.get('http://www.opensubtitles.org/pt/search2?MovieName={}&id=8&action=search&SubLanguageID=pob'.format(title))
 
@@ -34,11 +37,15 @@ def download_subtitles(title='Forrest Gump', target='.'):
                 return path.join(target, member.filename)
 
 def get_subtitles(target):
+    subtitles_path = None
     for f in os.listdir(target):
         if f.endswith('.srt'):
             log('Found existing subtitle at {}'.format(f))
-            return path.join(target, f)
-    return download_subtitles(path.basename(target), target)
+            subtitles_path = path.join(target, f)
+    if not subtitles_path:
+        subtitles_path = download_subtitles(path.basename(target), target)
+    convert_to_utf8(subtitles_path)
+    return subtitles_path
 
 def get_movie(target):
     files = [(path.getsize(path.join(target, f)), f) for f in os.listdir(target)]
