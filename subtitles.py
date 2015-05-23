@@ -4,19 +4,40 @@ import requests
 import re
 from zipfile import ZipFile
 from io import BytesIO
+from difflib import SequenceMatcher
+
+def similarity(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
 def convert_to_utf8(file_path):
     os.system('vim +"set bomb | set fileencoding=utf-8 | wq" "{}"'.format(file_path))
+
+def select_best(title, subs):
+    """
+    Returns the subtitle the matches the title most closely, or the most
+    popular one.
+    """
+    # Remove extension.
+    title = path.splitext(title)[0]
+    to_order = []
+    for i, sub_title, downloads in subs:
+        sub_title = path.splitext(sub_title)[0]
+        if similarity(sub_title, title) > 0.9:
+            return i
+        to_order.append((downloads, i))
+    to_order.sort(reverse=True)
+    return to_order[0][1]
 
 def request_subtitles(title='Forrest Gump', language='pob'):
     page = requests.get('http://www.opensubtitles.org/pt/search2?MovieName={}&id=8&action=search&SubLanguageID={}'.format(title, language))
 
     if '/pt/search/' in page.url:
         # Arrived at search page.
-        format = """onclick="reLink\(event,'/pt/subtitleserve/sub/(\d+)'\);">(\d+)x"""
-        results = [(int(downloads), id) for id, downloads in re.findall(format, page.text)]
-        results.sort(reverse=True)
-        id = results[0][1]
+        format = """<br />(?:<span title="(.+?)">[^<]+?</span>|([^<]*?))<br /><a rel="nofollow" onclick.+?/subtitleserve/sub/(\d+)'.+?(\d+)x"""
+        matches = re.findall(format, page.text, re.DOTALL)
+        subs = [(i, long_title or short_title, int(downloads))
+                for long_title, short_title, i, downloads in matches]
+        id = select_best(title, subs)
     elif '/pt/subtitles/' in page.url:
         # Arrived at direct subtitles page.
         id = re.search(r'/pt/subtitles/(\d+)/', page.url).groups()[0]
