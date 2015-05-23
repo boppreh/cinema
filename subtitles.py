@@ -16,12 +16,12 @@ def request_subtitles(title='Forrest Gump', language='pob'):
         format = """onclick="reLink\(event,'/pt/subtitleserve/sub/(\d+)'\);">(\d+)x"""
         results = [(int(downloads), id) for id, downloads in re.findall(format, page.text)]
         results.sort(reverse=True)
-        most_popular = results[0][1]
+        id = results[0][1]
     elif '/pt/subtitles/' in page.url:
         # Arrived at direct subtitles page.
-        most_popular = re.search(r'/pt/subtitles/(\d+)/', page.url).groups()[0]
+        id = re.search(r'/pt/subtitles/(\d+)/', page.url).groups()[0]
 
-    zipbytes = requests.get("http://dl.opensubtitles.org/pt/download/sub/{}".format(most_popular)).content
+    zipbytes = requests.get("http://dl.opensubtitles.org/pt/download/sub/{}".format(id)).content
     with ZipFile(BytesIO(zipbytes)) as zipfile:
         for member in zipfile.infolist():
             if member.filename.endswith('.srt'):
@@ -36,7 +36,6 @@ def download_subtitles(title, target, language='pob'):
 def find_existing(target):
     for f in os.listdir(target):
         if f.endswith('.srt'):
-            log('Found existing subtitle at {}'.format(f))
             return path.join(target, f)
 
 def get_subtitles(target):
