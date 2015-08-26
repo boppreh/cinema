@@ -89,7 +89,7 @@ def serve(movies_dir):
         run_control('stop')
         return redirect('/')
 
-    app.run(port=8080, host='0.0.0.0', debug=True)
+    app.run(port=80, host='0.0.0.0', debug=True)
 
-serve(r"/media/hd250/movies")
+serve(r"/home/guest/movies")
 #play(r"F:\movies\Epic (2013) [1080p]")
