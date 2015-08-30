@@ -28,7 +28,7 @@ def select_best(title, subs):
     to_order.sort(reverse=True)
     return to_order[0][1]
 
-def request_subtitles(title='Forrest Gump', language='pob'):
+def request_subtitles(title='Forrest Gump', language='en'):
     page = requests.get('http://www.opensubtitles.org/pt/search2?MovieName={}&id=8&action=search&SubLanguageID={}'.format(title, language))
 
     if '/pt/search/' in page.url:
@@ -48,7 +48,7 @@ def request_subtitles(title='Forrest Gump', language='pob'):
             if member.filename.endswith('.srt'):
                 return zipfile.open(member).read()
 
-def download_subtitles(title, target, language='pob'):
+def download_subtitles(title, target, language='en'):
     file_path = path.join(target, title + '.srt')
     with open(file_path, 'wb') as file:
         file.write(request_subtitles(title, language))
@@ -67,7 +67,13 @@ def get_subtitles(movie_file):
 
 if __name__ == '__main__':
     from sys import argv
-    if len(argv) == 2:
-        print(get_subtitles(argv[1]))
+    if len(argv) >= 2:
+        for p in argv[1:]:
+            if path.isdir(p): continue
+            print(p)
+            try:
+                print(get_subtitles(p))
+            except Exception as e:
+                print(p, e)
     else:
         print("Usage: subtitles.py movie_path")
