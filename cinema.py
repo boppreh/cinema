@@ -94,6 +94,10 @@ class Movie(object):
     def poster(self):
         return self._poster_path() if self._poster_path().exists() else None
 
+    @property
+    def thumbnail(self):
+        return self._thumbnail_path() if self._thumbnail_path().exists() else None
+
     def get_length(self):
         result = system_child(['avprobe', '-loglevel', 'quiet', '-show_format', '-of', 'json',
                                str(self.video)],
@@ -105,6 +109,9 @@ class Movie(object):
 
     def _poster_path(self):
         return self.video.with_name('poster.jpg') 
+
+    def _thumbnail_path(self):
+        return self.video.with_name('thumbnail.jpg') 
 
     def ensure_subtitle(self, language):
         if language not in self.subtitles:
@@ -167,7 +174,7 @@ class Player(object):
 
 player = None
 def serve(movies):
-    from flask import Flask, Response, redirect, send_from_directory
+    from flask import Flask, Response, redirect, send_from_directory, abort
     app = Flask(__name__, static_url_path='/static')
     template = """
 <html>
@@ -196,13 +203,26 @@ def serve(movies):
             flags = ''.join(map('<img src="/static/{}.png">'.format, movie.subtitles))
             duration = '{}:{:02}h'.format(int(movie.length / 60 / 60),
                                       int(movie.length / 60 % 60))
-            parts.append('<li><a href="/movies/{}/view">{}</a> {} {} {}</li>'.format(urlencode(movie.title), movie.title, duration, movie.score, flags))
+            url_title = urlencode(movie.title)
+            short_title = min(movie.title, movie.title[:50] + '...', key=len)
+            parts.append('<li><a href="/movies/{url_title}/view"><img src="/movies/{url_title}/thumbnail.jpg" onerror="this.src=\'/static/nicholas.jpg\'" alt="{title}"><br/><span>{short_title}</span><br/>{duration} {score} {flags}</a></li>'.format(url_title=url_title, title=movie.title, short_title=short_title, duration=duration, score=movie.score, flags=flags))
         return template.format('<ul>' + '\n'.join(parts) + '</ul>')
 
     @app.route("/movies/<title>/poster.jpg")
     def serve_poster(title):
         movie, = [movie for movie in movies if movie.title == title]
-        return Response(movie.poster.open('rb').read(), mimetype='image/jpg')
+        try:
+            return Response(movie.poster.open('rb').read(), mimetype='image/jpg')
+        except (IOError, AttributeError):
+            return abort(404)
+
+    @app.route("/movies/<title>/thumbnail.jpg")
+    def serve_thumbnail(title):
+        movie, = [movie for movie in movies if movie.title == title]
+        try:
+            return Response(movie.thumbnail.open('rb').read(), mimetype='image/jpg')
+        except (IOError, AttributeError):
+            return abort(404)
 
     @app.route("/movies/<title>/view")
     def view(title):
