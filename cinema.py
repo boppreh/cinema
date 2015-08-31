@@ -8,6 +8,7 @@ import re
 import json
 import pickle
 from urllib.parse import quote as urlencode, unquote as urldecode
+from time import time
 
 ALL_LANGUAGES = ['pt', 'en']
 
@@ -141,6 +142,7 @@ class Player(object):
         self.subtitle = str(subtitle)
         self.movie = movie
         self._start()
+        self.start_time = time()
 
     def _start(self):
         # Turn TV on.
@@ -228,13 +230,22 @@ def serve(movies):
         if player is None:
             return redirect('/')
 
-        return template.format("""
+        return (template.format("""
 Now playing {}<br><br>
 
 <a href="#" onclick="post('/controller/play_pause');">Play/Pause</a><br>
 <a href="#" onclick="post('/controller/show_subtitles');">Show subtitles</a> / <a href="#" onclick="post('hide_subtitles');">Hide subtitles</a><br>
 <a href="#" onclick="post('/controller/stop'); window.location.reload(false);">Stop</a><br>
-        """.format(player.movie.titleyear))
+
+<input id="position-slider" style="width: 200px" type="range" max="{}"></input>
+""".format(player.movie.titleyear, player.movie.length - 1) + """
+<script>
+var time = 0;
+var slider = document.getElementById("position-slider");
+slider.onchange = function(e) {
+    post("/controller/set_position/" + (slider.value * 1e6));
+}
+</script>"""))
 
     @app.route("/controller/<command>", methods=["POST", "GET"])
     @app.route("/controller/<command>/<value>", methods=["POST", "GET"])
@@ -248,7 +259,7 @@ Now playing {}<br><br>
         else:
             getattr(player, command)()
 
-        return 200
+        return ''
 
     app.run(port=8080, host='0.0.0.0', debug=True)
 
