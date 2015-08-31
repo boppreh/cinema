@@ -7,8 +7,7 @@ import hashlib
 import re
 import json
 import pickle
-
-class MissingSubtitle(Exception): pass
+from urllib.parse import quote as urlencode, unquote as urldecode
 
 ALL_LANGUAGES = ['pt', 'en']
 
@@ -41,7 +40,13 @@ class Movie(object):
     def __init__(self, video, length=None):
         self.video = video
         self.subtitles = {}
-        self.title = self.video.stem
+        self.titleyear = self.video.stem
+        try:
+            self.title, self.year = re.match(r'^(.+?) \((\d+)\)$', self.titleyear).groups()
+        except AttributeError:
+            print(self.titleyear)
+            self.title = self.titleyear
+            self.year = ''
         try:
             self.length = length if length is not None else self.get_length()
         except Exception:
@@ -62,6 +67,32 @@ class Movie(object):
             data += f.read(readsize)
         return hashlib.md5(data).hexdigest()
 
+    @property
+    def overview(self):
+        try:
+            return self.video.with_name('overview.txt').open().read()
+        except IOError:
+            return None
+
+    @overview.setter
+    def overview(self, value):
+        self.video.with_name('overview.txt').open('w').write(value)
+
+    @property
+    def score(self):
+        try:
+            return float(self.video.with_name('score.txt').open().read())
+        except IOError:
+            return None
+
+    @score.setter
+    def score(self, value):
+        self.video.with_name('score.txt').open('w').write(str(value))
+
+    @property
+    def poster(self):
+        return self._poster_path() if self._poster_path().exists() else None
+
     def get_length(self):
         result = system_child(['avprobe', '-loglevel', 'quiet', '-show_format', '-of', 'json',
                                str(self.video)],
@@ -70,6 +101,9 @@ class Movie(object):
 
     def _subtitle_path(self, language):
         return self.video.with_name('{}-{}.srt'.format(self.video.stem, language))
+
+    def _poster_path(self):
+        return self.video.with_name('poster.jpg') 
 
     def ensure_subtitle(self, language):
         if language not in self.subtitles:
@@ -93,18 +127,19 @@ class Movie(object):
         self.subtitles[language] = path
 
     def play(self, language=None):
-        return Player(self.video, self.subtitles[language] if language else None)
+        return Player(self.video, self.subtitles[language] if language else None, self)
 
     def __repr__(self):
-        return 'Movie({}, {} minutes, subttiles={})'.format(self.title, self.length // 60, self.subtitles.keys())
+        return 'Movie({}, {} minutes, subttiles={})'.format(self.titleyear, self.length // 60, self.subtitles.keys())
 
     def __lt__(self, other):
-        return self.title < other.title
+        return self.titleyear < other.titleyear
 
 class Player(object):
-    def __init__(self, video, subtitle):
+    def __init__(self, video, subtitle, movie=None):
         self.video = str(video)
         self.subtitle = str(subtitle)
+        self.movie = movie
         self._start()
 
     def _start(self):
@@ -129,13 +164,8 @@ class Player(object):
     def set_position(self, value): self._send_command('setposition', value)
 
 player = None
-movie_playing = None
 def serve(movies):
-    movie_playing = None
-
-    from flask import Flask, redirect, send_from_directory
-    from urllib.parse import quote as urlencode
-    from urllib.parse import unquote as urldecode
+    from flask import Flask, Response, redirect, send_from_directory
     app = Flask(__name__, static_url_path='/static')
     template = """
 <html>
@@ -164,16 +194,24 @@ def serve(movies):
             flags = ''.join(map('<img src="/static/{}.png">'.format, movie.subtitles))
             duration = '{}:{:02}h'.format(int(movie.length / 60 / 60),
                                       int(movie.length / 60 % 60))
-            parts.append('<li><a href="/movies/{}/view">{}</a> {} {}</li>'.format(urlencode(movie.title), movie.title, duration, flags))
+            parts.append('<li><a href="/movies/{}/view">{}</a> {} {} {}</li>'.format(urlencode(movie.title), movie.title, duration, movie.score, flags))
         return template.format('<ul>' + '\n'.join(parts) + '</ul>')
+
+    @app.route("/movies/<title>/poster.jpg")
+    def serve_poster(title):
+        movie, = [movie for movie in movies if movie.title == title]
+        return Response(movie.poster.open('rb').read(), mimetype='image/jpg')
 
     @app.route("/movies/<title>/view")
     def view(title):
         movie, = [movie for movie in movies if movie.title == title]
-        parts = ['<h1>{} ({} minutes)</h1>'.format(movie.title, int(movie.length / 60))]
+        parts = ['<h1>{} ({} minutes)</h1>'.format(movie.titleyear, int(movie.length / 60)),
+                 '<p>{}</p>'.format(movie.overview),
+                 '<p>Score: {}</p>'.format(movie.score)]
         for language in ALL_LANGUAGES:
             parts.append('<a href="/movies/{}/play/{}">Play <img src="/static/{}.png"></a>'.format(urlencode(movie.title), language, language))
         parts.append('<a href="/movies/{}/play/none">Play without subtitles</a>'.format(urlencode(movie.title)))
+        parts.append('<br><img style="max-width: 400px" src="/movies/{}/poster.jpg">'.format(urlencode(movie.title)))
         return template.format('<br>'.join(parts))
 
     @app.route("/movies/<title>/play/<language>")
@@ -181,49 +219,48 @@ def serve(movies):
         global player
         if player:
             player.stop()
-        global movie_playing
-        movie_playing, = [movie for movie in movies if movie.title == title]
-        player = movie_playing.play(language if language != 'none' else None)
+        movie, = [movie for movie in movies if movie.title == title]
+        player = movie.play(language if language != 'none' else None)
         return redirect('/controller')
 
     @app.route("/controller")
     def controller():
+        if player is None:
+            return redirect('/')
+
         return template.format("""
 Now playing {}<br><br>
 
-<a href="#" onclick="post('play_pause');">Play/Pause</a><br>
-<a href="#" onclick="post('show_subtitles');">Show subtitles</a> / <a href="#" onclick="post('hide_subtitles');">Hide subtitles</a><br>
-<a href="#" onclick="post('stop');">Play/Pause</a><br>
-        """.format(movie_playing.title))
+<a href="#" onclick="post('/controller/play_pause');">Play/Pause</a><br>
+<a href="#" onclick="post('/controller/show_subtitles');">Show subtitles</a> / <a href="#" onclick="post('hide_subtitles');">Hide subtitles</a><br>
+<a href="#" onclick="post('/controller/stop'); window.location.reload(false);">Stop</a><br>
+        """.format(player.movie.titleyear))
 
     @app.route("/controller/<command>", methods=["POST", "GET"])
     @app.route("/controller/<command>/<value>", methods=["POST", "GET"])
     def receive_command(command, value=None):
-        if value is not None:
+        if command == 'stop':
+            global player
+            player.stop()
+            player = None
+        elif value is not None:
             getattr(player, command)(value)
         else:
             getattr(player, command)()
 
+        return 200
+
     app.run(port=8080, host='0.0.0.0', debug=True)
 
-if __name__ == '__main__':
-    """
-    for movie in Movie.search(r"/media/250gb/movies", fetch_length=False):
-        print(movie)
-        try: movie.ensure_subtitle('pt')
-        except MissingSubtitle: pass
-        try: movie.ensure_subtitle('en')
-        except MissingSubtitle: pass
-        print(movie)
-    """
-
-    movies_dir = r"/media/250gb/movies"
-
+def load_cached_movies(movies_dir):
     cache_path = Path(movies_dir) / 'cache.pickle'
     if cache_path.exists():
-        movies = pickle.load(cache_path.open('rb'))
+        return pickle.load(cache_path.open('rb'))
     else:
         movies = list(sorted(Movie.search(movies_dir, debug=True)))
         pickle.dump(movies, cache_path.open('wb'))
+        return movies
 
-    serve(movies)
+if __name__ == '__main__':
+    movies_dir = r"/media/250gb/movies"
+    serve(load_cached_movies(movies_dir))
