@@ -40,8 +40,9 @@ h1 {
 }
 
 p {
-    font-family: arial;
-    font-variant: small-caps;
+    max-width: 800px;
+
+    text-align: justify;
 }
 
 a {
