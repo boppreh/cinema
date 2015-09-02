@@ -234,14 +234,17 @@ def serve(movies):
     @app.route("/movies/<title>/view")
     def view(title):
         movie = movie_by_title[title]
-        parts = ['<h1>{} ({} minutes)</h1>'.format(movie.titleyear, int(movie.length / 60)),
-                 '<p>{}</p>'.format(movie.overview),
+
+        parts = ['<p>{}</p>'.format(movie.overview),
                  '<p>Score: {}</p>'.format(movie.score)]
         for language in ALL_LANGUAGES:
             parts.append('<a href="/movies/{}/play/{}">Play <img src="/static/{}.png"></a>'.format(urlencode(movie.titleyear), language, language))
         parts.append('<a href="/movies/{}/play/none">Play without subtitles</a>'.format(urlencode(movie.titleyear)))
-        parts.append('<br><img style="max-width: 400px" src="/movies/{}/poster.jpg">'.format(urlencode(movie.titleyear)))
-        return template.format('<br>'.join(parts))
+        parts.append('<style>body {{ background: url(/movies/{}/backdrop.jpg) no-repeat top center fixed; }}</style>'.format(urlencode(movie.titleyear)))
+        #poster = '<img style="max-width: 400px" src="/movies/{}/poster.jpg">'.format(urlencode(movie.titleyear))
+        title_div = '<h1>{}<br>{} minutes</h1><br>'.format(movie.titleyear, int(movie.length / 60))
+        content = '<div id="content">{}<div id="description">{}</div></div>'.format(title_div, '<br>'.join(parts))
+        return template.format(content)
 
     @app.route("/movies/<title>/play/<language>")
     def play(title, language):

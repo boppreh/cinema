@@ -7,6 +7,10 @@
 
 body {
     background: #272822;
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
 
     color: #f8f8f2;
     font-family: arial;
@@ -15,6 +19,15 @@ body {
 
     margin: 0;
     padding: 10px;
+}
+
+
+#content {
+    max-width: 500px;
+    padding: 30px;
+    margin-left: auto;
+    background-color: rgba(27, 28, 22, 0.8);
+    box-shadow: 0 0 20px black;
 }
 
 ul {
