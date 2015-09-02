@@ -34,7 +34,10 @@ def ensure_overview(movie):
     if movie.overview and movie.poster and movie.score and movie.thumbnail and movie.backdrop:
         return
 
-    response = request_db('/search/movie', {'query': movie.title})['results'][0]
+    if movie.year:
+        response = request_db('/search/movie', {'query': movie.title, 'year': movie.year})['results'][0]
+    else:
+        response = request_db('/search/movie', {'query': movie.title})['results'][0]
     movie.overview = response['overview']
     movie.score = response['vote_average']
 
