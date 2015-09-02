@@ -1,7 +1,7 @@
 from pathlib import Path
 import os
 import platform
-from subprocess import Popen as system_child, PIPE
+from subprocess import Popen, PIPE
 import requests
 import hashlib
 import re
@@ -11,6 +11,10 @@ from urllib.parse import quote as urlencode, unquote as urldecode
 from time import time
 
 ALL_LANGUAGES = ['pt', 'en']
+
+def system_child(*args, **kwargs):
+    print('\n====\nRunning system command {} {}\n===='.format(args, kwargs))
+    return Popen(*args, **kwargs)
 
 class MissingSubtitle(Exception): pass
 
@@ -98,6 +102,10 @@ class Movie(object):
     def thumbnail(self):
         return self._thumbnail_path() if self._thumbnail_path().exists() else None
 
+    @property
+    def backdrop(self):
+        return self._backdrop_path() if self._backdrop_path().exists() else None
+
     def get_length(self):
         result = system_child(['avprobe', '-loglevel', 'quiet', '-show_format', '-of', 'json',
                                str(self.video)],
@@ -112,6 +120,9 @@ class Movie(object):
 
     def _thumbnail_path(self):
         return self.video.with_name('thumbnail.jpg') 
+
+    def _backdrop_path(self):
+        return self.video.with_name('backdrop.jpg') 
 
     def ensure_subtitle(self, language):
         if language not in self.subtitles:
@@ -135,7 +146,7 @@ class Movie(object):
         self.subtitles[language] = path
 
     def play(self, language=None):
-        return Player(self.video, self.subtitles[language] if language else None, self)
+        return Player(str(self.video), str(self.subtitles[language]) if language else None, self)
 
     def __repr__(self):
         return 'Movie({}, {} minutes, subttiles={})'.format(self.titleyear, self.length // 60, self.subtitles.keys())
@@ -145,8 +156,8 @@ class Movie(object):
 
 class Player(object):
     def __init__(self, video, subtitle, movie=None):
-        self.video = str(video)
-        self.subtitle = str(subtitle)
+        self.video = video
+        self.subtitle = subtitle
         self.movie = movie
         self._start()
         self.start_time = time()
@@ -154,7 +165,7 @@ class Player(object):
     def _start(self):
         # Turn TV on.
         os.system("echo 'on 0' | cec-client -s")
-        if self.subtitle:
+        if not self.subtitle:
             self.subprocess = system_child([r'omxplayer', self.video, '-b'])
         else:
             self.subprocess = system_child([r'omxplayer', self.video, '--subtitles', self.subtitle, '-b'])
@@ -189,6 +200,8 @@ def serve(movies):
     </body>
 </html>"""
 
+    movie_by_title = {movie.titleyear: movie for movie in movies}
+
     @app.route("/static/<path:path>")
     def serve_style(path):
         return send_from_directory(path)
@@ -203,37 +216,31 @@ def serve(movies):
             flags = ''.join(map('<img src="/static/{}.png">'.format, movie.subtitles))
             duration = '{}:{:02}h'.format(int(movie.length / 60 / 60),
                                       int(movie.length / 60 % 60))
-            url_title = urlencode(movie.title)
-            short_title = min(movie.title, movie.title[:50] + '...', key=len)
+            url_title = urlencode(movie.titleyear)
+            short_title = min(movie.title, movie.title[:50] + '...', key=len) + ' ({})'.format(movie.year)
             parts.append('<li><a href="/movies/{url_title}/view"><img src="/movies/{url_title}/thumbnail.jpg" onerror="this.src=\'/static/nicholas.jpg\'" alt="{title}"><br/><span>{short_title}</span><br/>{duration} {score} {flags}</a></li>'.format(url_title=url_title, title=movie.title, short_title=short_title, duration=duration, score=movie.score, flags=flags))
         return template.format('<ul>' + '\n'.join(parts) + '</ul>')
 
-    @app.route("/movies/<title>/poster.jpg")
-    def serve_poster(title):
-        movie, = [movie for movie in movies if movie.title == title]
+    @app.route("/movies/<title>/<image_type>.jpg")
+    def serve_movie_image(title, image_type):
+        assert image_type in ('poster', 'backdrop', 'thumbnail')
+        movie = movie_by_title[title]
+        image_path = getattr(movie, image_type)
         try:
-            return Response(movie.poster.open('rb').read(), mimetype='image/jpg')
-        except (IOError, AttributeError):
-            return abort(404)
-
-    @app.route("/movies/<title>/thumbnail.jpg")
-    def serve_thumbnail(title):
-        movie, = [movie for movie in movies if movie.title == title]
-        try:
-            return Response(movie.thumbnail.open('rb').read(), mimetype='image/jpg')
+            return Response(image_path.open('rb').read(), mimetype='image/jpg')
         except (IOError, AttributeError):
             return abort(404)
 
     @app.route("/movies/<title>/view")
     def view(title):
-        movie, = [movie for movie in movies if movie.title == title]
+        movie = movie_by_title[title]
         parts = ['<h1>{} ({} minutes)</h1>'.format(movie.titleyear, int(movie.length / 60)),
                  '<p>{}</p>'.format(movie.overview),
                  '<p>Score: {}</p>'.format(movie.score)]
         for language in ALL_LANGUAGES:
-            parts.append('<a href="/movies/{}/play/{}">Play <img src="/static/{}.png"></a>'.format(urlencode(movie.title), language, language))
-        parts.append('<a href="/movies/{}/play/none">Play without subtitles</a>'.format(urlencode(movie.title)))
-        parts.append('<br><img style="max-width: 400px" src="/movies/{}/poster.jpg">'.format(urlencode(movie.title)))
+            parts.append('<a href="/movies/{}/play/{}">Play <img src="/static/{}.png"></a>'.format(urlencode(movie.titleyear), language, language))
+        parts.append('<a href="/movies/{}/play/none">Play without subtitles</a>'.format(urlencode(movie.titleyear)))
+        parts.append('<br><img style="max-width: 400px" src="/movies/{}/poster.jpg">'.format(urlencode(movie.titleyear)))
         return template.format('<br>'.join(parts))
 
     @app.route("/movies/<title>/play/<language>")
@@ -241,7 +248,7 @@ def serve(movies):
         global player
         if player:
             player.stop()
-        movie, = [movie for movie in movies if movie.title == title]
+        movie = movie_by_title[title]
         player = movie.play(language if language != 'none' else None)
         return redirect('/controller')
 
