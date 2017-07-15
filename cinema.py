@@ -22,7 +22,7 @@ class Movie(object):
     min_movie_size = 90000000
 
     @staticmethod
-    def search(root_path, fetch_length=True,debug=False):
+    def search(root_path, fetch_length=True, debug=False):
         root = Path(root_path)
         def search_videos():
             yield from root.glob('**/*.avi')
@@ -140,7 +140,7 @@ class Movie(object):
             raise MissingSubtitle('Download from thesubdb returned empty response for video {} ({})'.format(self.video, language))
         assert len(response.text)
 
-        with path.open('w') as f:
+        with path.open('w', encoding='utf-8') as f:
             f.write(response.text)
 
         self.subtitles[language] = path
