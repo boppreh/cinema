@@ -5,3 +5,7 @@ Since my Pi is hooked to my TV and I want to watch stuff, I decided to make a pr
 
 `Cinema` is a webserver that serves a list of your movies. Use your smartphone to select one and click "play".
 The program automagically finds subtitles and starts playing the movie, no TV interaction required.
+
+This project uses the following data sources:
+* Subtitles: thesubdb.com
+* Movie info and images: themoviedb.org
